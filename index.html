@@ -180,7 +180,7 @@
       content: "👥";
       font-size: 18px;
     }
-    .pill { background: #f1f5f9; border-radius: 999px; padding: 6px 10px; font-size: 13px; color: #334155; }
+    .pill { background: #eff6ff; border: 1px solid #bfdbfe; border-radius: 999px; padding: 6px 10px; font-size: 12px; color: #1e3a8a; font-weight: 800; }
     .hidden { display: none; }
     .student-row { cursor: pointer; transition: .12s ease; }
     .student-row:hover td { background: #eff6ff; }
@@ -331,7 +331,7 @@
     <section id="resultSection" class="hidden" style="margin-top:22px">
       <div class="no-print" style="margin-bottom:12px">
         <h2>모둠 편성 결과</h2>
-        <p>학생 두 명을 차례로 클릭하면 서로 자리가 바뀌고 평균 점수가 바로 다시 계산됩니다. 별표를 누르면 조장 표시가 켜지거나 꺼집니다.</p>
+        <p>학생 두 명을 차례로 클릭하면 서로 자리가 바뀌고, 위의 평균 차이가 바로 다시 계산됩니다. 별표를 누르면 조장 표시가 켜지거나 꺼집니다.</p>
       </div>
       <div class="results" id="results"></div>
     </section>
@@ -474,6 +474,18 @@ function ensureLeaders(gs) {
   gs.forEach(g => { const first = g.students.find(s => s.canLead); if (first) first.isLeader = true; });
   return gs;
 }
+function getOverallAverage() {
+  const all = groups.flatMap(g => g.students);
+  if (!all.length) return 0;
+  return Math.round((all.reduce((sum, s) => sum + (Number(s.score) || 0), 0) / all.length) * 10) / 10;
+}
+function getAverageDiff(groupAvg) {
+  return Math.round((getOverallAverage() - groupAvg) * 10) / 10;
+}
+function formatDiff(value) {
+  if (value > 0) return `+${value}`;
+  return `${value}`;
+}
 function recalcAverages() {
   groups = groups.map(g => ({ ...g, avg: g.students.length ? Math.round((g.students.reduce((sum,s)=>sum + (Number(s.score) || 0),0) / g.students.length) * 10) / 10 : 0 }));
 }
@@ -590,11 +602,11 @@ function renderGroups() {
   $("printBtn").disabled = false;
   $("results").innerHTML = groups.map((g, groupIndex) => `
     <div class="group-card">
-      <div class="group-head"><h3>${g.id}모둠</h3></div>
-      <table><thead><tr><th>조장</th><th>이름</th><th>성별</th><th class="score-col">점수</th></tr></thead><tbody>
+      <div class="group-head"><h3>${g.id}모둠</h3><span class="pill avg-pill">전체평균-모둠평균 <b id="avg-${groupIndex}">${formatDiff(getAverageDiff(g.avg))}</b></span></div>
+      <table><thead><tr><th>조장</th><th>이름</th><th>성별</th></tr></thead><tbody>
       ${g.students.map((s, studentIndex) => `<tr class="student-row ${selectedSeat && selectedSeat.groupIndex === groupIndex && selectedSeat.studentIndex === studentIndex ? "selected" : ""}" data-group="${groupIndex}" data-student="${studentIndex}">
         <td><button type="button" class="star-btn ${s.isLeader ? "active" : ""}" data-group="${groupIndex}" data-student="${studentIndex}" title="조장 표시">★</button><span class="leader-label">${s.isLeader ? "조장" : ""}</span></td>
-        <td><b>${escapeHtml(s.name)}</b></td><td>${escapeHtml(s.gender)}</td><td class="score-cell">${s.score}</td>
+        <td><b>${escapeHtml(s.name)}</b></td><td>${escapeHtml(s.gender)}</td>
       </tr>`).join("")}
       </tbody></table><div class="guide no-print">자리 바꾸기: 학생 2명 클릭 / 조장 지정: 별표 클릭</div>
     </div>`).join("");
@@ -606,7 +618,7 @@ function updateAverageDisplay(groupIndex) {
   if (!g) return;
   g.avg = g.students.length ? Math.round((g.students.reduce((sum,s)=>sum + (Number(s.score) || 0),0) / g.students.length) * 10) / 10 : 0;
   const el = $(`avg-${groupIndex}`);
-  if (el) el.textContent = g.avg;
+  if (el) el.textContent = formatDiff(getAverageDiff(g.avg));
 }
 function handleStudentClick(e) {
   if (e.target.closest(".star-btn")) return;
